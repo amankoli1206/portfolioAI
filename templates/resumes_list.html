@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Generated Resumes — PortfolioAI{% endblock %}
+{% block page_heading %}Generated Resumes Archive{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">ATS Resume Catalog</div>
+      <div class="card-subtitle">All customized resumes compiled from your verified SQLite portfolio</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <a href="{{ url_for('generate_default_demonstrations') }}" class="btn btn-secondary btn-sm">
+        <span>Generate Demo Resumes (A & B)</span>
+      </a>
+      <a href="{{ url_for('resume_builder') }}" class="btn btn-primary btn-sm">
+        <span>Build New Resume</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    {% if resumes %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Resume Title</th>
+              <th>Target Role</th>
+              <th>Template</th>
+              <th>Generated At</th>
+              <th style="text-align: right;">Download PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in resumes %}
+              <tr>
+                <td><code>#{{ r.id }}</code></td>
+                <td>
+                  <strong>{{ r.resume_title }}</strong>
+                  {% if r.customized_summary %}
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">{{ r.customized_summary[:90] }}...</div>
+                  {% endif %}
+                </td>
+                <td><span class="badge badge-blue">{{ r.target_role }}</span></td>
+                <td><span class="badge badge-gray">{{ r.template_name.replace('_', ' ').title() }}</span></td>
+                <td style="font-size: 12.5px; color: var(--text-secondary);">{{ r.created_at }}</td>
+                <td style="text-align: right;">
+                  <a href="{{ url_for('download_resume', filename=r.pdf_filename) }}" class="btn btn-secondary btn-sm">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Download PDF</span>
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="padding: 40px; text-align: center;">
+        <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary);">No Resumes Generated Yet</h3>
+        <p style="font-size: 12.5px; color: var(--text-tertiary); margin-top: 4px; max-width: 440px; margin-left: auto; margin-right: auto;">
+          Click the button below to generate the two required demonstration resumes or build a customized one using the Resume Builder.
+        </p>
+        <div style="margin-top: 16px; display: flex; justify-content: center; gap: 10px;">
+          <a href="{{ url_for('generate_default_demonstrations') }}" class="btn btn-secondary">
+            <span>Generate Demo Resumes (Frontend & AI/ML)</span>
+          </a>
+          <a href="{{ url_for('resume_builder') }}" class="btn btn-primary">
+            <span>Open Resume Builder</span>
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

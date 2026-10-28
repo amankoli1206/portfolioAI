@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PortfolioAI — Portfolio Database & Dynamic Resume Generator{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Apple iOS Styled Sidebar -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('index') }}" class="brand-logo">
+          <div class="brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">PortfolioAI</div>
+            <div class="brand-subtitle">Career Database</div>
+          </div>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Navigation</div>
+        
+        <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </span>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="{{ url_for('portfolio') }}" class="nav-link {% if request.endpoint == 'portfolio' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </span>
+          <span>My Portfolio</span>
+        </a>
+
+        <a href="{{ url_for('import_resume') }}" class="nav-link {% if request.endpoint == 'import_resume' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          </span>
+          <span>Import Resume PDF</span>
+        </a>
+
+        <div class="nav-section-title">Intelligence & Tools</div>
+
+        <a href="{{ url_for('job_analyzer') }}" class="nav-link {% if request.endpoint == 'job_analyzer' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <span>Job Description Analyzer</span>
+        </a>
+
+        <a href="{{ url_for('resume_builder') }}" class="nav-link {% if request.endpoint == 'resume_builder' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </span>
+          <span>Resume Builder</span>
+        </a>
+
+        <a href="{{ url_for('resumes_list') }}" class="nav-link {% if request.endpoint == 'resumes_list' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </span>
+          <span>Generated Resumes</span>
+        </a>
+
+        <div class="nav-section-title">Integrations</div>
+
+        <a href="{{ url_for('google_sheets_view') }}" class="nav-link {% if request.endpoint == 'google_sheets_view' %}active{% endif %}">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          </span>
+          <span>Google Sheets Sync</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div><strong>PortfolioAI</strong></div>
+        <div style="font-size: 11px; margin-top: 1px;">SQLite &bull; Gemini 2.5 &bull; ReportLab</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <header class="top-bar">
+        <div class="page-title-box">
+          <h1>{% block page_heading %}Dashboard{% endblock %}</h1>
+        </div>
+        <div class="top-bar-actions">
+          <a href="{{ url_for('resume_builder') }}" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Build New Resume</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <!-- Flash Alert Messages -->
+        <div class="flash-container">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                  <span>{{ message }}</span>
+                  <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; cursor:pointer; font-size:16px; color:inherit;">&times;</button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Google Sheets Integration — PortfolioAI{% endblock %}
+{% block page_heading %}Google Sheets Synchronization{% endblock %}
+
+{% block content %}
+<!-- Synchronization Status Banner -->
+<div class="card" style="border-top: 3px solid {% if sync_state and sync_state.last_sync_status == 'Success' %}var(--ios-green){% elif sync_state and sync_state.last_sync_status == 'Failed' %}var(--ios-red){% else %}var(--ios-blue){% endif %};">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Spreadsheet Export & Cloud Synchronization</div>
+      <div class="card-subtitle">Export your 11 database categories into 10 structured spreadsheet tabs</div>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <a href="{{ url_for('export_spreadsheet') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Export 10-Tab Spreadsheet</span>
+      </a>
+      <form action="{{ url_for('trigger_google_sheets_sync') }}" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-secondary">
+          <span>Live Cloud Sync</span>
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- One-Click Export Notice Box -->
+    <div style="background: var(--ios-blue-tint); border: 1px solid rgba(0, 122, 255, 0.2); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div style="font-size: 13.5px; font-weight: 600; color: var(--ios-blue);">Instant Spreadsheet Export (Zero Setup Required)</div>
+        <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 2px;">
+          Download your complete 10-tab portfolio database file and open or drag it directly into Google Sheets or Excel.
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <a href="{{ url_for('export_spreadsheet') }}" class="btn btn-primary btn-sm">
+          <span>Download .xlsx File</span>
+        </a>
+        <a href="https://sheets.new" target="_blank" class="btn btn-secondary btn-sm">
+          <span>Open Google Sheets</span>
+        </a>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
+      <div style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 12px 14px; background: #FAFAFC;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 700;">Status</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 4px;">
+          <span class="badge {% if sync_state and sync_state.last_sync_status == 'Success' %}badge-green{% elif sync_state and sync_state.last_sync_status == 'Failed' %}badge-amber{% else %}badge-gray{% endif %}">
+            {{ sync_state.last_sync_status if sync_state else 'Never Synchronized' }}
+          </span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 12px 14px; background: #FAFAFC;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 700;">Last Synchronized</div>
+        <div style="font-size: 13.5px; font-weight: 600; margin-top: 4px; color: var(--text-primary);">
+          {{ sync_state.last_sync_time if sync_state and sync_state.last_sync_time else 'Never' }}
+        </div>
+      </div>
+
+      <div style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 12px 14px; background: #FAFAFC;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 700;">Records Synchronized</div>
+        <div style="font-size: 15px; font-weight: 700; margin-top: 4px; color: var(--ios-blue);">
+          {{ sync_state.records_synced if sync_state else 0 }} across 10 tabs
+        </div>
+      </div>
+    </div>
+
+    {% if sync_state and sync_state.last_sync_message %}
+      <div style="background-color: #FAFAFC; border-left: 3px solid #8E8E93; padding: 12px 14px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 18px;">
+        <strong>Details:</strong> {{ sync_state.last_sync_message }}
+      </div>
+    {% endif %}
+
+    {% if sync_state and sync_state.spreadsheet_url %}
+      <div style="display: flex; align-items: center; justify-content: space-between; background: var(--ios-green-tint); border: 1px solid rgba(52, 199, 89, 0.25); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 18px;">
+        <div>
+          <div style="font-size: 13.5px; font-weight: 600; color: #248A3D;">Connected Google Spreadsheet Active</div>
+          <div style="font-size: 12px; color: #248A3D; margin-top: 2px;">{{ sync_state.spreadsheet_url }}</div>
+        </div>
+        <a href="{{ sync_state.spreadsheet_url }}" target="_blank" class="btn btn-secondary btn-sm">
+          <span>Open Spreadsheet</span>
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tabs Export Architecture Breakdown -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Structured 10-Tab Worksheet Architecture</div>
+      <div class="card-subtitle">Each category is mapped to its dedicated worksheet tab with stable primary key IDs</div>
+    </div>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tab Number</th>
+            <th>Worksheet Tab Name</th>
+            <th>Primary Key</th>
+            <th>Sample Columns Exported</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Tab 1</code></td>
+            <td><strong>Personal Information</strong></td>
+            <td><code>ID=1</code></td>
+            <td>Full Name, Email, Phone, Location, LinkedIn, GitHub, Portfolio URL</td>
+          </tr>
+          <tr>
+            <td><code>Tab 2</code></td>
+            <td><strong>Education</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Institution, Degree, Field of Study, Dates, GPA/Grade, Location</td>
+          </tr>
+          <tr>
+            <td><code>Tab 3</code></td>
+            <td><strong>Technical Skills</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Skill Name, Category, Proficiency Level, Years Experience</td>
+          </tr>
+          <tr>
+            <td><code>Tab 4</code></td>
+            <td><strong>Soft Skills</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Skill Name, Category, Description</td>
+          </tr>
+          <tr>
+            <td><code>Tab 5</code></td>
+            <td><strong>Projects</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Title, Role, Technologies, Dates, GitHub URL, Demo URL, Description</td>
+          </tr>
+          <tr>
+            <td><code>Tab 6</code></td>
+            <td><strong>Certifications</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Title, Organization, Issue Date, Expiration, Credential ID</td>
+          </tr>
+          <tr>
+            <td><code>Tab 7</code></td>
+            <td><strong>Experience</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Job Title, Company, Type, Location, Dates, Responsibilities, Achievements</td>
+          </tr>
+          <tr>
+            <td><code>Tab 8</code></td>
+            <td><strong>Achievements</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Title, Issuer, Date Received, Description</td>
+          </tr>
+          <tr>
+            <td><code>Tab 9</code></td>
+            <td><strong>Publications & Activities</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Title, Type, Organization/Venue, Duration, URL, Description</td>
+          </tr>
+          <tr>
+            <td><code>Tab 10</code></td>
+            <td><strong>Languages & Competencies</strong></td>
+            <td><code>Record ID</code></td>
+            <td>Language, Proficiency Level, Certifications</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Setup Instructions -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Google Cloud Service Account Configuration</div>
+      <div class="card-subtitle">Required for authenticating automated write access to Google Sheets</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <ol style="padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.8;">
+      <li>
+        Open the <a href="https://console.cloud.google.com/" target="_blank" style="color: var(--ios-blue);">Google Cloud Console</a> and create or select a project.
+      </li>
+      <li>
+        In <strong>APIs & Services &gt; Library</strong>, enable both <strong>Google Sheets API</strong> and <strong>Google Drive API</strong>.
+      </li>
+      <li>
+        In <strong>IAM & Admin &gt; Service Accounts</strong>, click <strong>Create Service Account</strong> (e.g. <code>portfolioai-sync</code>).
+      </li>
+      <li>
+        In the Service Account, go to <strong>Keys</strong> &gt; <strong>Add Key</strong> &gt; <strong>Create new key</strong> &gt; Select <strong>JSON</strong>.
+      </li>
+      <li>
+        Save the downloaded key file in this project root as:
+        <code style="background: #E5E5EA; padding: 2px 6px; border-radius: 4px;">service_account.json</code>
+      </li>
+      <li>
+        If no <code>SPREADSHEET_ID</code> is configured in <code>.env</code>, PortfolioAI will automatically create a new Google Sheet named <strong>PortfolioAI Master Database - [Name]</strong> on your first sync.
+      </li>
+    </ol>
+  </div>
+</div>
+{% endblock %}

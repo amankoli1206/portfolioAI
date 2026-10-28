@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — PortfolioAI{% endblock %}
+{% block page_heading %}Portfolio Dashboard{% endblock %}
+
+{% block content %}
+<!-- Apple iOS Welcome Banner -->
+<div class="card" style="background: #FFFFFF; border: 1px solid var(--ios-border); margin-bottom: 20px;">
+  <div class="card-body" style="padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <span class="badge badge-blue" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">Master Career Database</span>
+        <h2 style="font-size: 21px; font-weight: 700; color: var(--text-primary); margin-top: 6px; letter-spacing: -0.02em;">Welcome to PortfolioAI</h2>
+        <p style="color: var(--text-secondary); font-size: 13.5px; max-width: 680px; margin-top: 4px; line-height: 1.5;">
+          Maintain verified portfolio records across 11 normalized database categories. Analyze job postings with Gemini AI, prevent qualification fabrication, synchronize with Google Sheets, and generate ATS-compliant ReportLab PDF resumes.
+        </p>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{{ url_for('generate_default_demonstrations') }}" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Generate Demo Resumes</span>
+        </a>
+        <a href="{{ url_for('resume_builder') }}" class="btn btn-primary">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Resume Builder</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- iOS Style Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Technical Skills</div>
+    <div class="stat-value">{{ counts.technical_skills }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Projects</div>
+    <div class="stat-value">{{ counts.projects }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Work Experience</div>
+    <div class="stat-value">{{ counts.experience }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Certifications</div>
+    <div class="stat-value">{{ counts.certifications }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Education</div>
+    <div class="stat-value">{{ counts.education }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Generated Resumes</div>
+    <div class="stat-value">{{ counts.generated_resumes }}</div>
+  </div>
+</div>
+
+<!-- Profile Overview & Google Sheets Integration Row -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+  <!-- Candidate Profile Card -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Candidate Profile & Summary</div>
+        <div class="card-subtitle">Verified primary record in SQLite database</div>
+      </div>
+      <a href="{{ url_for('portfolio', tab='personal') }}" class="btn btn-secondary btn-sm">Edit Profile</a>
+    </div>
+    <div class="card-body">
+      {% if personal %}
+        <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+          <div style="width: 48px; height: 48px; border-radius: var(--radius-sm); background: var(--ios-blue-tint); color: var(--ios-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700;">
+            {{ personal.full_name[:2] }}
+          </div>
+          <div style="flex-grow: 1;">
+            <h3 style="font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.015em;">{{ personal.full_name }}</h3>
+            <div style="color: var(--text-secondary); font-size: 12.5px; margin-top: 2px;">
+              {{ personal.location or 'Location not set' }} &bull; {{ personal.email }} &bull; {{ personal.phone }}
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 12px; font-size: 12.5px;">
+              {% if personal.linkedin_url %}<a href="{{ personal.linkedin_url }}" target="_blank" style="color: var(--ios-blue); text-decoration: none; font-weight: 500;">LinkedIn</a>{% endif %}
+              {% if personal.github_url %}<a href="{{ personal.github_url }}" target="_blank" style="color: var(--ios-blue); text-decoration: none; font-weight: 500;">GitHub</a>{% endif %}
+              {% if personal.portfolio_url %}<a href="{{ personal.portfolio_url }}" target="_blank" style="color: var(--ios-blue); text-decoration: none; font-weight: 500;">Portfolio Website</a>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if summary and summary.professional_summary %}
+          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ios-border);">
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); letter-spacing: 0.04em; margin-bottom: 3px;">Verified Summary</div>
+            <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">{{ summary.professional_summary }}</p>
+          </div>
+        {% endif %}
+      {% else %}
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: var(--text-tertiary); font-size: 13px;">No profile found in database.</p>
+          <a href="{{ url_for('portfolio') }}" class="btn btn-primary btn-sm" style="margin-top: 10px;">Set Up Profile</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Google Sheets Integration Card -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Google Sheets Sync</div>
+        <div class="card-subtitle">Secondary sync copy</div>
+      </div>
+      <a href="{{ url_for('google_sheets_view') }}" class="btn btn-secondary btn-sm">Manage</a>
+    </div>
+    <div class="card-body">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+        <span class="badge {% if sync_state and sync_state.last_sync_status == 'Success' %}badge-green{% elif sync_state and sync_state.last_sync_status == 'Failed' %}badge-amber{% else %}badge-gray{% endif %}">
+          {{ sync_state.last_sync_status if sync_state else 'Never Synchronized' }}
+        </span>
+        <span style="font-size: 12px; color: var(--text-secondary);">
+          {{ sync_state.records_synced or 0 }} records synced
+        </span>
+      </div>
+
+      <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+        Export your complete 11 database categories into 10 structured spreadsheet tabs with stable record IDs.
+      </p>
+
+      <a href="{{ url_for('export_spreadsheet') }}" class="btn btn-primary btn-sm" style="width: 100%; margin-bottom: 8px;">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Export 10-Tab Spreadsheet</span>
+      </a>
+
+      {% if sync_state and sync_state.spreadsheet_url %}
+        <a href="{{ sync_state.spreadsheet_url }}" target="_blank" class="btn btn-secondary btn-sm" style="width: 100%; margin-bottom: 8px;">
+          <span>Open Synchronized Sheet</span>
+        </a>
+      {% endif %}
+
+      <form action="{{ url_for('trigger_google_sheets_sync') }}" method="POST">
+        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">
+          <span>Live Cloud Sync</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Generated Resumes Table -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Recent Generated Resumes</div>
+      <div class="card-subtitle">ATS-compliant PDF resumes compiled with ReportLab</div>
+    </div>
+    <a href="{{ url_for('resumes_list') }}" class="btn btn-secondary btn-sm">View All Resumes</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    {% if recent_resumes %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Resume Title</th>
+              <th>Target Role</th>
+              <th>Template</th>
+              <th>Created At</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for resume in recent_resumes %}
+              <tr>
+                <td><strong>{{ resume.resume_title }}</strong></td>
+                <td><span class="badge badge-blue">{{ resume.target_role }}</span></td>
+                <td>{{ resume.template_name.replace('_', ' ').title() }}</td>
+                <td style="color: var(--text-secondary); font-size: 12.5px;">{{ resume.created_at }}</td>
+                <td style="text-align: right;">
+                  <a href="{{ url_for('download_resume', filename=resume.pdf_filename) }}" class="btn btn-secondary btn-sm">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Download PDF</span>
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="padding: 32px; text-align: center; color: var(--text-tertiary);">
+        <p style="font-size: 13.5px;">No resumes generated yet.</p>
+        <div style="margin-top: 10px;">
+          <a href="{{ url_for('generate_default_demonstrations') }}" class="btn btn-teal btn-sm">Generate 2 Sample Resumes</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Builder — PortfolioAI{% endblock %}
+{% block page_heading %}ATS Resume Builder{% endblock %}
+
+{% block content %}
+<!-- Safeguard Alert -->
+<div class="card" style="border-left: 4px solid var(--ios-blue); margin-bottom: 20px;">
+  <div class="card-body" style="padding: 14px 18px;">
+    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.45;">
+      <strong style="color: var(--text-primary);">Anti-Fabrication Safeguard:</strong> The generated resume contains only verified items from your database. Gemini AI may optimize phrasing and highlight matched competencies, but will never hallucinate nonexistent credentials or experience.
+    </div>
+  </div>
+</div>
+
+<!-- Workflow Steps Container -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+  
+  <!-- Left Column: Controls, Job Description & Selection -->
+  <div>
+    <!-- Step 1: Target Position & Job Description -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">1. Target Position & Job Description</div>
+          <div class="card-subtitle">AI extracts requirements and tailors resume matching</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="loadPreset('frontend')">Frontend Preset</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="loadPreset('aiml')">AI/ML Preset</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Target Role Title</label>
+          <input type="text" id="targetRole" class="form-control" value="{{ initial_target_role }}" placeholder="e.g. Frontend Developer Intern">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Job Description</label>
+          <textarea id="jobDesc" class="form-control" rows="6" placeholder="Paste job requirements here...">{{ initial_job_text }}</textarea>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnMatchJob" onclick="analyzeAndMatchJob()">
+          <span>Match Portfolio & Tailor Summary</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Professional Summary Customization -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">2. Professional Summary</div>
+          <div class="card-subtitle">Grounded in verified facts only</div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="resetToMasterSummary()">Reset</button>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <textarea id="customSummary" class="form-control" rows="4">{{ (portfolio.summary.professional_summary if portfolio.summary else '') }}</textarea>
+        </div>
+        <div id="aiSummaryNotice" style="display: none; font-size: 12px; color: var(--ios-blue); font-weight: 500;">
+          Tailored summary suggested by Gemini based only on matched verified skills.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Select Items to Include -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">3. Select Records to Include</div>
+          <div class="card-subtitle">Check items you want on this specific resume</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Technical Skills Selector -->
+        <h4 style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+          Technical Skills (<span id="selectedSkillsCount">{{ portfolio.technical_skills|length }}</span> selected)
+        </h4>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllCheckboxes('.skill-selector', true)">Select All</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllCheckboxes('.skill-selector', false)">Deselect All</button>
+        </div>
+        <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 18px; background: #FAFAFC;">
+          {% for s in portfolio.technical_skills %}
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px; cursor: pointer;">
+              <input type="checkbox" class="skill-selector" value="{{ s.id }}" checked onchange="updatePreview()">
+              <span><strong>{{ s.skill_name }}</strong> <span style="color:var(--text-tertiary); font-size: 11.5px;">({{ s.category }})</span></span>
+            </label>
+          {% endfor %}
+        </div>
+
+        <!-- Projects Selector -->
+        <h4 style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Projects</h4>
+        <div style="margin-bottom: 18px;">
+          {% for p in portfolio.projects %}
+            <div style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; background: #FFFFFF;">
+              <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="checkbox" class="project-selector" value="{{ p.id }}" checked onchange="updatePreview()">
+                <div>
+                  <strong>{{ p.title }}</strong>
+                  <div style="color: var(--ios-blue); font-size: 12px;">{{ p.technologies }}</div>
+                </div>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Experience Selector -->
+        <h4 style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Experience</h4>
+        <div style="margin-bottom: 18px;">
+          {% for e in portfolio.experience %}
+            <div style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; background: #FFFFFF;">
+              <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="checkbox" class="exp-selector" value="{{ e.id }}" checked onchange="updatePreview()">
+                <div>
+                  <strong>{{ e.job_title }}</strong> at {{ e.company_name }}
+                  <div style="color: var(--text-secondary); font-size: 12px;">{{ e.start_date }} – {{ 'Present' if e.is_current else e.end_date }}</div>
+                </div>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Education Selector -->
+        <h4 style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Education</h4>
+        <div style="margin-bottom: 18px;">
+          {% for edu in portfolio.education %}
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px; cursor: pointer;">
+              <input type="checkbox" class="edu-selector" value="{{ edu.id }}" checked onchange="updatePreview()">
+              <span><strong>{{ edu.institution }}</strong> ({{ edu.degree }} in {{ edu.field_of_study }})</span>
+            </label>
+          {% endfor %}
+        </div>
+
+        <!-- Certifications Selector -->
+        <h4 style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Certifications</h4>
+        <div style="margin-bottom: 10px;">
+          {% for c in portfolio.certifications %}
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px; cursor: pointer;">
+              <input type="checkbox" class="cert-selector" value="{{ c.id }}" checked onchange="updatePreview()">
+              <span><strong>{{ c.title }}</strong> ({{ c.issuing_organization }})</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Template Selection, Live Preview & ReportLab PDF Generation -->
+  <div style="position: sticky; top: 80px;">
+    <!-- Step 4: Choose Template & Generate -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">4. Template & Download</div>
+          <div class="card-subtitle">Clean, ATS-compliant layouts</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+          <label style="border: 2px solid var(--ios-blue); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; cursor: pointer; background: var(--ios-blue-tint);" id="tpl_label_modern">
+            <input type="radio" name="template" value="modern_ats" checked onchange="selectTemplate('modern_ats')">
+            <div style="font-size: 12.5px; font-weight: 600; margin-top: 3px;">Modern ATS</div>
+            <div style="font-size: 11px; color: var(--text-secondary);">Navy Accents</div>
+          </label>
+
+          <label style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; cursor: pointer; background: #FFFFFF;" id="tpl_label_classic">
+            <input type="radio" name="template" value="classic_executive" onchange="selectTemplate('classic_executive')">
+            <div style="font-size: 12.5px; font-weight: 600; margin-top: 3px;">Classic</div>
+            <div style="font-size: 11px; color: var(--text-secondary);">Charcoal</div>
+          </label>
+
+          <label style="border: 1px solid var(--ios-border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; cursor: pointer; background: #FFFFFF;" id="tpl_label_minimal">
+            <input type="radio" name="template" value="minimal_tech" onchange="selectTemplate('minimal_tech')">
+            <div style="font-size: 12.5px; font-weight: 600; margin-top: 3px;">Minimal Tech</div>
+            <div style="font-size: 11px; color: var(--text-secondary);">Teal Tint</div>
+          </label>
+        </div>
+
+        <button type="button" class="btn btn-primary" style="width: 100%; padding: 10px;" id="btnGeneratePdf" onclick="generateOfficialPdf()">
+          <span>Generate & Download PDF Resume</span>
+        </button>
+
+        <div id="generationResult" style="display: none; margin-top: 12px;"></div>
+      </div>
+    </div>
+
+    <!-- Live Preview Box -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Live Resume Preview</div>
+          <div class="card-subtitle">Real-time sync of selected items</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding: 16px; max-height: 500px; overflow-y: auto;">
+        <div class="resume-preview-sheet" id="previewContainer">
+          <!-- Dynamically populated by updatePreview() -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const masterPortfolio = {{ portfolio | tojson }};
+let selectedTemplate = 'modern_ats';
+
+const presetFrontend = `{{ sample_frontend | replace('\n', '\\n') | safe }}`;
+const presetAiml = `{{ sample_aiml | replace('\n', '\\n') | safe }}`;
+
+function loadPreset(type) {
+  if (type === 'frontend') {
+    document.getElementById('targetRole').value = "Frontend Developer Intern";
+    document.getElementById('jobDesc').value = presetFrontend;
+  } else if (type === 'aiml') {
+    document.getElementById('targetRole').value = "AI / Machine Learning Engineering Intern";
+    document.getElementById('jobDesc').value = presetAiml;
+  }
+  analyzeAndMatchJob();
+}
+
+function selectTemplate(tpl) {
+  selectedTemplate = tpl;
+  document.getElementById('tpl_label_modern').style.borderColor = (tpl === 'modern_ats') ? 'var(--ios-blue)' : 'var(--ios-border)';
+  document.getElementById('tpl_label_modern').style.background = (tpl === 'modern_ats') ? 'var(--ios-blue-tint)' : '#FFFFFF';
+
+  document.getElementById('tpl_label_classic').style.borderColor = (tpl === 'classic_executive') ? 'var(--ios-blue)' : 'var(--ios-border)';
+  document.getElementById('tpl_label_classic').style.background = (tpl === 'classic_executive') ? 'var(--ios-blue-tint)' : '#FFFFFF';
+
+  document.getElementById('tpl_label_minimal').style.borderColor = (tpl === 'minimal_tech') ? 'var(--ios-blue)' : 'var(--ios-border)';
+  document.getElementById('tpl_label_minimal').style.background = (tpl === 'minimal_tech') ? 'var(--ios-blue-tint)' : '#FFFFFF';
+
+  updatePreview();
+}
+
+function toggleAllCheckboxes(selector, checked) {
+  document.querySelectorAll(selector).forEach(cb => { cb.checked = checked; });
+  updatePreview();
+}
+
+function resetToMasterSummary() {
+  const orig = masterPortfolio.summary ? masterPortfolio.summary.professional_summary : "";
+  document.getElementById('customSummary').value = orig;
+  document.getElementById('aiSummaryNotice').style.display = 'none';
+  updatePreview();
+}
+
+function analyzeAndMatchJob() {
+  const jobText = document.getElementById('jobDesc').value.trim();
+  const targetRole = document.getElementById('targetRole').value.trim();
+  const btn = document.getElementById('btnMatchJob');
+  const origText = btn.innerText;
+
+  if (!jobText) {
+    alert("Please enter a job description to analyze.");
+    return;
+  }
+
+  btn.innerText = "Analyzing with Gemini...";
+  btn.disabled = true;
+
+  fetch("{{ url_for('api_analyze_and_match') }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      job_description: jobText,
+      target_role: targetRole
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.innerText = origText;
+    btn.disabled = false;
+
+    if (data.success) {
+      if (data.analysis && data.analysis.job_title && !targetRole) {
+        document.getElementById('targetRole').value = data.analysis.job_title;
+      }
+      if (data.suggested_summary) {
+        document.getElementById('customSummary').value = data.suggested_summary;
+        document.getElementById('aiSummaryNotice').style.display = 'block';
+      }
+
+      const matched = data.match.matched_skills || [];
+      if (matched.length > 0) {
+        document.querySelectorAll('.skill-selector').forEach(cb => {
+          const s = masterPortfolio.technical_skills.find(item => item.id == cb.value);
+          if (s && matched.includes(s.skill_name)) {
+            cb.checked = true;
+          }
+        });
+      }
+      updatePreview();
+    } else {
+      alert("Notice: " + (data.error || "Analysis completed."));
+    }
+  })
+  .catch(err => {
+    btn.innerText = origText;
+    btn.disabled = false;
+    alert("Request error: " + err);
+  });
+}
+
+function updatePreview() {
+  const container = document.getElementById('previewContainer');
+  const targetRole = document.getElementById('targetRole').value;
+  const summary = document.getElementById('customSummary').value;
+  const pi = masterPortfolio.personal_info || {};
+
+  const checkedSkills = Array.from(document.querySelectorAll('.skill-selector:checked')).map(el => parseInt(el.value));
+  const checkedProjects = Array.from(document.querySelectorAll('.project-selector:checked')).map(el => parseInt(el.value));
+  const checkedExp = Array.from(document.querySelectorAll('.exp-selector:checked')).map(el => parseInt(el.value));
+  const checkedEdu = Array.from(document.querySelectorAll('.edu-selector:checked')).map(el => parseInt(el.value));
+  const checkedCerts = Array.from(document.querySelectorAll('.cert-selector:checked')).map(el => parseInt(el.value));
+
+  document.getElementById('selectedSkillsCount').innerText = checkedSkills.length;
+
+  const skills = (masterPortfolio.technical_skills || []).filter(s => checkedSkills.includes(s.id));
+  const projects = (masterPortfolio.projects || []).filter(p => checkedProjects.includes(p.id));
+  const experience = (masterPortfolio.experience || []).filter(e => checkedExp.includes(e.id));
+  const education = (masterPortfolio.education || []).filter(ed => checkedEdu.includes(ed.id));
+
+  let accentColor = '#1e40af';
+  if (selectedTemplate === 'classic_executive') accentColor = '#1f2937';
+  if (selectedTemplate === 'minimal_tech') accentColor = '#0f766e';
+
+  let html = `
+    <div style="border-bottom: 2px solid ${accentColor}; padding-bottom: 10px; margin-bottom: 14px;">
+      <h2 style="font-size: 20px; font-weight: 700; color: ${accentColor};">${pi.full_name || 'Candidate Name'}</h2>
+      <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #636366; margin-top: 2px;">${targetRole}</div>
+      <div style="font-size: 11px; color: #8E8E93; margin-top: 3px;">
+        ${pi.email || ''}  &bull;  ${pi.phone || ''}  &bull;  ${pi.location || ''}
+      </div>
+    </div>
+  `;
+
+  if (summary) {
+    html += `
+      <div style="margin-bottom: 12px;">
+        <h4 style="font-size: 11.5px; font-weight: 700; color: ${accentColor}; text-transform: uppercase; border-bottom: 1px solid #E5E5EA; padding-bottom: 2px; margin-bottom: 4px;">Summary</h4>
+        <p style="font-size: 12px; color: #3A3A3C; line-height: 1.4;">${summary}</p>
+      </div>
+    `;
+  }
+
+  if (skills.length > 0) {
+    html += `
+      <div style="margin-bottom: 12px;">
+        <h4 style="font-size: 11.5px; font-weight: 700; color: ${accentColor}; text-transform: uppercase; border-bottom: 1px solid #E5E5EA; padding-bottom: 2px; margin-bottom: 4px;">Technical Skills</h4>
+        <p style="font-size: 11.5px; color: #3A3A3C;">${skills.map(s => s.skill_name).join(' &bull; ')}</p>
+      </div>
+    `;
+  }
+
+  if (experience.length > 0) {
+    html += `
+      <div style="margin-bottom: 12px;">
+        <h4 style="font-size: 11.5px; font-weight: 700; color: ${accentColor}; text-transform: uppercase; border-bottom: 1px solid #E5E5EA; padding-bottom: 2px; margin-bottom: 6px;">Experience</h4>
+        ${experience.map(e => `
+          <div style="margin-bottom: 8px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
+              <span>${e.job_title} — ${e.company_name}</span>
+              <span style="color:#8E8E93; font-weight:normal;">${e.start_date} – ${e.is_current ? 'Present' : e.end_date}</span>
+            </div>
+            <div style="font-size: 11px; color: #3A3A3C; margin-top: 2px; white-space:pre-line;">${e.responsibilities ? e.responsibilities.split('\n')[0] : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (projects.length > 0) {
+    html += `
+      <div style="margin-bottom: 12px;">
+        <h4 style="font-size: 11.5px; font-weight: 700; color: ${accentColor}; text-transform: uppercase; border-bottom: 1px solid #E5E5EA; padding-bottom: 2px; margin-bottom: 6px;">Projects</h4>
+        ${projects.map(p => `
+          <div style="margin-bottom: 8px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
+              <span>${p.title}</span>
+              <span style="color:#8E8E93; font-weight:normal;">${p.start_date || ''}</span>
+            </div>
+            <div style="font-size: 11px; color: var(--ios-blue);">Tech: ${p.technologies}</div>
+            <div style="font-size: 11px; color: #3A3A3C; margin-top: 2px;">${p.description}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (education.length > 0) {
+    html += `
+      <div style="margin-bottom: 12px;">
+        <h4 style="font-size: 11.5px; font-weight: 700; color: ${accentColor}; text-transform: uppercase; border-bottom: 1px solid #E5E5EA; padding-bottom: 2px; margin-bottom: 6px;">Education</h4>
+        ${education.map(ed => `
+          <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+            <span><strong>${ed.degree} in ${ed.field_of_study}</strong> — ${ed.institution}</span>
+            <span style="color:#8E8E93;">${ed.start_date} – ${ed.end_date}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function generateOfficialPdf() {
+  const btn = document.getElementById('btnGeneratePdf');
+  const resBox = document.getElementById('generationResult');
+  const origText = btn.innerText;
+
+  btn.innerText = "Compiling PDF...";
+  btn.disabled = true;
+
+  const payload = {
+    target_role: document.getElementById('targetRole').value,
+    template_name: selectedTemplate,
+    summary_text: document.getElementById('customSummary').value,
+    job_description: document.getElementById('jobDesc').value,
+    selected_skills: Array.from(document.querySelectorAll('.skill-selector:checked')).map(el => parseInt(el.value)),
+    selected_projects: Array.from(document.querySelectorAll('.project-selector:checked')).map(el => parseInt(el.value)),
+    selected_experience: Array.from(document.querySelectorAll('.exp-selector:checked')).map(el => parseInt(el.value)),
+    selected_education: Array.from(document.querySelectorAll('.edu-selector:checked')).map(el => parseInt(el.value)),
+    selected_certifications: Array.from(document.querySelectorAll('.cert-selector:checked')).map(el => parseInt(el.value)),
+    selected_achievements: (masterPortfolio.achievements || []).map(a => a.id),
+    selected_languages: (masterPortfolio.languages || []).map(l => l.id)
+  };
+
+  fetch("{{ url_for('api_generate_resume_pdf') }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.innerText = origText;
+    btn.disabled = false;
+
+    if (data.success) {
+      resBox.style.display = 'block';
+      resBox.innerHTML = `
+        <div class="alert alert-success" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Resume compiled successfully</span>
+          <a href="${data.download_url}" class="btn btn-primary btn-sm">Download ${data.filename}</a>
+        </div>
+      `;
+    } else {
+      resBox.style.display = 'block';
+      resBox.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Failed to generate PDF'}</div>`;
+    }
+  })
+  .catch(err => {
+    btn.innerText = origText;
+    btn.disabled = false;
+    resBox.style.display = 'block';
+    resBox.innerHTML = `<div class="alert alert-danger">Network error: ${err}</div>`;
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updatePreview();
+  {% if initial_job_text %}
+    analyzeAndMatchJob();
+  {% endif %}
+});
+</script>
+{% endblock %}

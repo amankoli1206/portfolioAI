@@ -1,0 +1,32 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+*.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Instance and DB files
+instance/*.db
+instance/*.sqlite3
+!instance/.gitkeep
+
+# Uploads & Temporary files
+uploads/*
+!uploads/.gitkeep
+generated_resumes/*
+!generated_resumes/.gitkeep
+
+# Credentials and Keys
+credentials.json
+service_account.json
+*.pem
+
+# Mac OS
+.DS_Store

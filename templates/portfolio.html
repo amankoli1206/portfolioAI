@@ -1,0 +1,947 @@
+{% extends "base.html" %}
+
+{% block title %}My Portfolio Database — PortfolioAI{% endblock %}
+{% block page_heading %}Master Portfolio Database{% endblock %}
+
+{% block content %}
+<!-- Apple iOS Segmented Tabs Navigation -->
+<div class="tabs-nav">
+  <a href="{{ url_for('portfolio', tab='personal') }}" class="tab-btn {% if active_tab == 'personal' %}active{% endif %}">Personal Info</a>
+  <a href="{{ url_for('portfolio', tab='summary') }}" class="tab-btn {% if active_tab == 'summary' %}active{% endif %}">Summary</a>
+  <a href="{{ url_for('portfolio', tab='technical_skills') }}" class="tab-btn {% if active_tab == 'technical_skills' %}active{% endif %}">Technical Skills ({{ data.technical_skills|length }})</a>
+  <a href="{{ url_for('portfolio', tab='projects') }}" class="tab-btn {% if active_tab == 'projects' %}active{% endif %}">Projects ({{ data.projects|length }})</a>
+  <a href="{{ url_for('portfolio', tab='experience') }}" class="tab-btn {% if active_tab == 'experience' %}active{% endif %}">Experience ({{ data.experience|length }})</a>
+  <a href="{{ url_for('portfolio', tab='education') }}" class="tab-btn {% if active_tab == 'education' %}active{% endif %}">Education ({{ data.education|length }})</a>
+  <a href="{{ url_for('portfolio', tab='certifications') }}" class="tab-btn {% if active_tab == 'certifications' %}active{% endif %}">Certifications ({{ data.certifications|length }})</a>
+  <a href="{{ url_for('portfolio', tab='soft_skills') }}" class="tab-btn {% if active_tab == 'soft_skills' %}active{% endif %}">Soft Skills ({{ data.soft_skills|length }})</a>
+  <a href="{{ url_for('portfolio', tab='achievements') }}" class="tab-btn {% if active_tab == 'achievements' %}active{% endif %}">Achievements ({{ data.achievements|length }})</a>
+  <a href="{{ url_for('portfolio', tab='publications') }}" class="tab-btn {% if active_tab == 'publications' %}active{% endif %}">Publications & Activities ({{ data.publications_activities|length }})</a>
+  <a href="{{ url_for('portfolio', tab='languages') }}" class="tab-btn {% if active_tab == 'languages' %}active{% endif %}">Languages ({{ data.languages|length }})</a>
+</div>
+
+<!-- ==================== 1. PERSONAL INFO TAB ==================== -->
+{% if active_tab == 'personal' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Personal & Contact Information</div>
+      <div class="card-subtitle">Master contact record for all generated resumes and sheets export</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <form action="{{ url_for('update_personal') }}" method="POST">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" name="full_name" class="form-control" value="{{ data.personal_info.full_name if data.personal_info else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" name="email" class="form-control" value="{{ data.personal_info.email if data.personal_info else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="text" name="phone" class="form-control" value="{{ data.personal_info.phone if data.personal_info else '' }}">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Location (City, State / Country)</label>
+          <input type="text" name="location" class="form-control" value="{{ data.personal_info.location if data.personal_info else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">LinkedIn Profile URL</label>
+          <input type="url" name="linkedin_url" class="form-control" value="{{ data.personal_info.linkedin_url if data.personal_info else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">GitHub Profile URL</label>
+          <input type="url" name="github_url" class="form-control" value="{{ data.personal_info.github_url if data.personal_info else '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Portfolio Website URL</label>
+        <input type="url" name="portfolio_url" class="form-control" value="{{ data.personal_info.portfolio_url if data.personal_info else '' }}">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Personal Information</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 2. SUMMARY TAB ==================== -->
+{% if active_tab == 'summary' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Professional Summary & Career Objective</div>
+      <div class="card-subtitle">Master summary used as baseline for AI-driven tailoring</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <form action="{{ url_for('update_summary') }}" method="POST">
+      <div class="form-group">
+        <label class="form-label">Professional Summary</label>
+        <textarea name="professional_summary" class="form-control" rows="5" required>{{ data.summary.professional_summary if data.summary else '' }}</textarea>
+        <small style="color: var(--text-tertiary); font-size: 12px; margin-top: 4px; display: block;">Summarize your key technical specializations, academic standing, and demonstrated accomplishments.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Career Objective</label>
+        <textarea name="career_objective" class="form-control" rows="3">{{ data.summary.career_objective if data.summary else '' }}</textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Summary & Objective</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 3. TECHNICAL SKILLS TAB ==================== -->
+{% if active_tab == 'technical_skills' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Technical Skills</div>
+      <div class="card-subtitle">Structured verified skills categorized by domain</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addSkillModal')">Add Skill</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Skill Name</th>
+            <th>Category</th>
+            <th>Proficiency</th>
+            <th>Years Experience</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for skill in data.technical_skills %}
+            <tr>
+              <td><code>#{{ skill.id }}</code></td>
+              <td><strong>{{ skill.skill_name }}</strong></td>
+              <td><span class="badge badge-blue">{{ skill.category }}</span></td>
+              <td>{{ skill.proficiency_level }}</td>
+              <td>{{ skill.years_of_experience }} yrs</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='technical_skills', item_id=skill.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No technical skills recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Technical Skill -->
+<div class="modal-overlay" id="addSkillModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Technical Skill</div>
+      <button class="modal-close" onclick="closeModal('addSkillModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='technical_skills') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Skill Name</label>
+          <input type="text" name="skill_name" class="form-control" placeholder="e.g. React.js, PyTorch, Docker" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category" class="form-control">
+            <option value="Programming Languages">Programming Languages</option>
+            <option value="Frontend & Web">Frontend & Web</option>
+            <option value="AI & Machine Learning">AI & Machine Learning</option>
+            <option value="Backend & Databases">Backend & Databases</option>
+            <option value="DevOps & Tools">DevOps & Tools</option>
+            <option value="Cloud Platforms">Cloud Platforms</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Proficiency Level</label>
+            <select name="proficiency_level" class="form-control">
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate" selected>Intermediate</option>
+              <option value="Advanced">Advanced</option>
+              <option value="Expert">Expert</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Years of Experience</label>
+            <input type="number" step="0.5" name="years_of_experience" class="form-control" value="1.0" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addSkillModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Skill</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 4. PROJECTS TAB ==================== -->
+{% if active_tab == 'projects' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Projects</div>
+      <div class="card-subtitle">Verified software and research engineering projects</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addProjectModal')">Add Project</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Project Title</th>
+            <th>Role</th>
+            <th>Technologies</th>
+            <th>Timeline</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for proj in data.projects %}
+            <tr>
+              <td>
+                <strong>{{ proj.title }}</strong>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">{{ proj.description[:90] }}...</div>
+              </td>
+              <td>{{ proj.role or 'Developer' }}</td>
+              <td><span style="font-size: 12.5px; color: var(--ios-blue);">{{ proj.technologies }}</span></td>
+              <td style="font-size: 12.5px;">{{ proj.start_date }} – {{ proj.end_date or 'Ongoing' }}</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='projects', item_id=proj.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No projects recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Project -->
+<div class="modal-overlay" id="addProjectModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Verified Project</div>
+      <button class="modal-close" onclick="closeModal('addProjectModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='projects') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Project Title</label>
+          <input type="text" name="title" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <input type="text" name="role" class="form-control" placeholder="e.g. Frontend Lead, Full-Stack Developer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Technologies (comma-separated)</label>
+            <input type="text" name="technologies" class="form-control" placeholder="React, TypeScript, Flask" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="month" name="start_date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date (leave empty if ongoing)</label>
+            <input type="month" name="end_date" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">GitHub Repository URL</label>
+            <input type="url" name="github_url" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Live Demo URL</label>
+            <input type="url" name="live_url" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Short Description</label>
+          <textarea name="description" class="form-control" rows="2" required></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Highlights (one per line)</label>
+          <textarea name="highlights" class="form-control" rows="3" placeholder="Engineered responsive UI handling 5,000+ data points...&#10;Integrated REST API endpoints..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addProjectModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Project</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 5. WORK EXPERIENCE TAB ==================== -->
+{% if active_tab == 'experience' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Internships & Work Experience</div>
+      <div class="card-subtitle">Verified professional employment and internship records</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addExpModal')">Add Experience</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Job Title</th>
+            <th>Company</th>
+            <th>Type</th>
+            <th>Dates</th>
+            <th>Location</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exp in data.experience %}
+            <tr>
+              <td><strong>{{ exp.job_title }}</strong></td>
+              <td>{{ exp.company_name }}</td>
+              <td><span class="badge badge-purple">{{ exp.employment_type }}</span></td>
+              <td style="font-size: 12.5px;">{{ exp.start_date }} – {{ 'Present' if exp.is_current else exp.end_date }}</td>
+              <td>{{ exp.location }}</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='experience', item_id=exp.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No experience records added yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Experience -->
+<div class="modal-overlay" id="addExpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Work Experience / Internship</div>
+      <button class="modal-close" onclick="closeModal('addExpModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='experience') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Job Title</label>
+            <input type="text" name="job_title" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company / Organization</label>
+            <input type="text" name="company_name" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Employment Type</label>
+            <select name="employment_type" class="form-control">
+              <option value="Internship" selected>Internship</option>
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Research Assistant">Research Assistant</option>
+              <option value="Contract">Contract</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input type="text" name="location" class="form-control" placeholder="e.g. San Francisco, CA">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="month" name="start_date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="month" name="end_date" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" name="is_current" value="1"> Currently working here
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Key Responsibilities (one per line)</label>
+          <textarea name="responsibilities" class="form-control" rows="4" required placeholder="Refactored legacy customer portal into React components...&#10;Collaborated with designers and engineers in bi-weekly sprints..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Key Achievements / Highlights</label>
+          <textarea name="achievements" class="form-control" rows="2" placeholder="e.g. Received Outstanding Intern award for completing metrics module ahead of schedule."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addExpModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Experience</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 6. EDUCATION TAB ==================== -->
+{% if active_tab == 'education' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Education</div>
+      <div class="card-subtitle">Collegiate degrees, coursework, and academic standing</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addEduModal')">Add Education</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Institution</th>
+            <th>Degree & Major</th>
+            <th>Dates</th>
+            <th>GPA / Grade</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for edu in data.education %}
+            <tr>
+              <td><strong>{{ edu.institution }}</strong></td>
+              <td>{{ edu.degree }} in {{ edu.field_of_study }}</td>
+              <td style="font-size: 12.5px;">{{ edu.start_date }} – {{ edu.end_date }}</td>
+              <td><span class="badge badge-green">{{ edu.gpa_or_grade }}</span></td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='education', item_id=edu.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No education records added yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Education -->
+<div class="modal-overlay" id="addEduModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Education</div>
+      <button class="modal-close" onclick="closeModal('addEduModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='education') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">College / University Name</label>
+          <input type="text" name="institution" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Degree</label>
+            <input type="text" name="degree" class="form-control" placeholder="e.g. Bachelor of Science" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Field of Study / Major</label>
+            <input type="text" name="field_of_study" class="form-control" placeholder="e.g. Computer Science" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="month" name="start_date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date (or Expected)</label>
+            <input type="month" name="end_date" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">GPA or Grade</label>
+            <input type="text" name="gpa_or_grade" class="form-control" placeholder="e.g. 3.88 / 4.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input type="text" name="location" class="form-control" placeholder="e.g. San Francisco, CA">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Relevant Coursework & Honors</label>
+          <textarea name="description" class="form-control" rows="3" placeholder="Data Structures, Algorithms, Machine Learning, Web Engineering..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addEduModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Education</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 7. CERTIFICATIONS TAB ==================== -->
+{% if active_tab == 'certifications' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Certifications & Courses</div>
+      <div class="card-subtitle">Verified professional credentials and licenses</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addCertModal')">Add Certification</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Certification Title</th>
+            <th>Issuing Organization</th>
+            <th>Issue Date</th>
+            <th>Credential ID</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cert in data.certifications %}
+            <tr>
+              <td><strong>{{ cert.title }}</strong></td>
+              <td>{{ cert.issuing_organization }}</td>
+              <td>{{ cert.issue_date }}</td>
+              <td><code>{{ cert.credential_id or '—' }}</code></td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='certifications', item_id=cert.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No certifications recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Certification -->
+<div class="modal-overlay" id="addCertModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Certification</div>
+      <button class="modal-close" onclick="closeModal('addCertModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='certifications') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Certification Title</label>
+          <input type="text" name="title" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Issuing Organization</label>
+          <input type="text" name="issuing_organization" class="form-control" placeholder="e.g. AWS, Meta, DeepLearning.AI" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Issue Date</label>
+            <input type="month" name="issue_date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiration Date</label>
+            <input type="month" name="expiration_date" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Credential ID</label>
+            <input type="text" name="credential_id" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Verification URL</label>
+            <input type="url" name="credential_url" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addCertModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Certification</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 8. SOFT SKILLS TAB ==================== -->
+{% if active_tab == 'soft_skills' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Soft Skills & Competencies</div>
+      <div class="card-subtitle">Communication, problem solving, teamwork, and leadership</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addSoftSkillModal')">Add Soft Skill</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Skill Name</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in data.soft_skills %}
+            <tr>
+              <td><strong>{{ s.skill_name }}</strong></td>
+              <td><span class="badge badge-amber">{{ s.category }}</span></td>
+              <td style="color: var(--text-secondary); font-size: 13px;">{{ s.description }}</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='soft_skills', item_id=s.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No soft skills added yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Soft Skill -->
+<div class="modal-overlay" id="addSoftSkillModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Soft Skill</div>
+      <button class="modal-close" onclick="closeModal('addSoftSkillModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='soft_skills') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Skill Name</label>
+          <input type="text" name="skill_name" class="form-control" placeholder="e.g. Technical Communication, Agile Collaboration" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category" class="form-control">
+            <option value="Communication">Communication</option>
+            <option value="Teamwork">Teamwork</option>
+            <option value="Problem Solving">Problem Solving</option>
+            <option value="Leadership">Leadership</option>
+            <option value="Growth Mindset">Growth Mindset</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Context</label>
+          <textarea name="description" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addSoftSkillModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Soft Skill</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 9. ACHIEVEMENTS TAB ==================== -->
+{% if active_tab == 'achievements' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Achievements & Awards</div>
+      <div class="card-subtitle">Hackathons, honors, collegiate recognitions</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addAchModal')">Add Achievement</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Issuer</th>
+            <th>Date Received</th>
+            <th>Description</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in data.achievements %}
+            <tr>
+              <td><strong>{{ a.title }}</strong></td>
+              <td>{{ a.issuer }}</td>
+              <td>{{ a.date_received }}</td>
+              <td style="color: var(--text-secondary); font-size: 13px;">{{ a.description }}</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='achievements', item_id=a.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No achievements recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Achievement -->
+<div class="modal-overlay" id="addAchModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Achievement</div>
+      <button class="modal-close" onclick="closeModal('addAchModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='achievements') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Achievement Title</label>
+          <input type="text" name="title" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Issuer / Event</label>
+            <input type="text" name="issuer" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date Received</label>
+            <input type="month" name="date_received" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addAchModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Achievement</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 10. PUBLICATIONS & ACTIVITIES TAB ==================== -->
+{% if active_tab == 'publications' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Research Papers, Publications & Activities</div>
+      <div class="card-subtitle">Academic research, workshops, student clubs, and open-source contributions</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addPubModal')">Add Entry</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Venue / Organization</th>
+            <th>Date / Duration</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pub in data.publications_activities %}
+            <tr>
+              <td><strong>{{ pub.title }}</strong></td>
+              <td><span class="badge badge-purple">{{ pub.activity_type }}</span></td>
+              <td>{{ pub.organization_or_venue }}</td>
+              <td style="font-size: 12.5px;">{{ pub.date_or_duration }}</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='publications', item_id=pub.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No publications or activities recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Publication -->
+<div class="modal-overlay" id="addPubModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Publication or Activity</div>
+      <button class="modal-close" onclick="closeModal('addPubModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='publications') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input type="text" name="title" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select name="activity_type" class="form-control">
+              <option value="Research Paper">Research Paper</option>
+              <option value="Workshop">Workshop</option>
+              <option value="Hackathon">Hackathon</option>
+              <option value="Activity">Student Activity / Club</option>
+              <option value="Open Source">Open Source Contribution</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Organization / Venue</label>
+            <input type="text" name="organization_or_venue" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date or Duration</label>
+            <input type="text" name="date_or_duration" class="form-control" placeholder="e.g. May 2024">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link / DOI URL</label>
+            <input type="url" name="url" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addPubModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==================== 11. LANGUAGES TAB ==================== -->
+{% if active_tab == 'languages' %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Languages & Other Competencies</div>
+      <div class="card-subtitle">Spoken languages, certifications, and communication proficiencies</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addLangModal')">Add Language</button>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Language</th>
+            <th>Proficiency Level</th>
+            <th>Certifications / Notes</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lang in data.languages %}
+            <tr>
+              <td><strong>{{ lang.language_name }}</strong></td>
+              <td><span class="badge badge-green">{{ lang.proficiency }}</span></td>
+              <td>{{ lang.certifications or '—' }}</td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('delete_portfolio_item', category='languages', item_id=lang.id) }}" method="POST" style="display:inline;" onsubmit="return confirmDelete();">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" style="text-align:center; padding: 24px; color: var(--text-tertiary);">No languages added yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Language -->
+<div class="modal-overlay" id="addLangModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Language</div>
+      <button class="modal-close" onclick="closeModal('addLangModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_portfolio_item', category='languages') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Language Name</label>
+          <input type="text" name="language_name" class="form-control" placeholder="e.g. English, Spanish, German" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Proficiency Level</label>
+          <select name="proficiency" class="form-control">
+            <option value="Native / Bilingual">Native / Bilingual</option>
+            <option value="Fluent">Fluent</option>
+            <option value="Professional Working" selected>Professional Working</option>
+            <option value="Conversational">Conversational</option>
+            <option value="Elementary">Elementary</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Certification (Optional)</label>
+          <input type="text" name="certifications" class="form-control" placeholder="e.g. TOEFL 110, DELE B2">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addLangModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Language</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

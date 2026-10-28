@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Import Resume PDF — PortfolioAI{% endblock %}
+{% block page_heading %}Import Existing Resume PDF{% endblock %}
+
+{% block content %}
+<!-- Safeguard Info Banner -->
+<div class="card" style="border-left: 4px solid var(--ios-blue);">
+  <div class="card-body" style="padding: 16px 20px;">
+    <div style="display: flex; gap: 12px; align-items: flex-start;">
+      <div style="color: var(--ios-blue); margin-top: 1px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <h4 style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Human-in-the-Loop Verification Safeguard</h4>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">
+          Extracted resume items are treated as <strong>unverified</strong> until you inspect and approve them. PortfolioAI and Gemini will <strong>never invent</strong> missing dates, certifications, degrees, or skills. You can edit any field below before committing to the SQLite database.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not parsed_data %}
+<!-- Upload Card -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Upload Resume File (PDF)</div>
+      <div class="card-subtitle">Supported format: Text-based PDF up to 16MB</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <form action="{{ url_for('import_resume') }}" method="POST" enctype="multipart/form-data">
+      <div style="border: 2px dashed #D1D1D6; border-radius: var(--radius-md); padding: 44px 20px; text-align: center; background-color: #FAFAFC; margin-bottom: 18px;">
+        <div style="color: var(--ios-blue); margin-bottom: 12px; display: inline-flex;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">Select your existing resume PDF</h3>
+        <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px;">
+          pypdf will extract raw text and Gemini will parse it into 11 structured database categories.
+        </p>
+        <input type="file" name="resume_pdf" accept=".pdf" id="resumeFile" style="display: none;" onchange="updateFileName(this)" required>
+        <label for="resumeFile" class="btn btn-secondary" style="cursor: pointer;">Choose PDF File</label>
+        <div id="selectedFileName" style="margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--ios-blue);"></div>
+      </div>
+
+      {% if is_scanned_error %}
+        <div class="alert alert-warning" style="margin-bottom: 16px;">
+          <strong>Scanned Document Notice:</strong> The uploaded PDF contains no extractable text stream. OCR or a text-based PDF is required for automated parsing.
+        </div>
+      {% endif %}
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="submit" class="btn btn-primary" id="uploadBtn">
+          <span>Upload & Extract Portfolio Fields</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% else %}
+<!-- Verification & Approval Screen -->
+<div class="card" style="border-top: 3px solid var(--ios-green);">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Review & Verify Extracted Records</div>
+      <div class="card-subtitle">
+        Parsed using: <strong>{{ model_used or 'Gemini 2.5 Flash' }}</strong> &bull; Review and modify any fields before saving.
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <a href="{{ url_for('import_resume') }}" class="btn btn-secondary btn-sm">Discard</a>
+      <button type="button" class="btn btn-teal btn-sm" onclick="submitApprovedResume()">
+        <span>Approve & Save to Database</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <form id="reviewForm">
+      <!-- 1. Personal Info Section -->
+      <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--ios-blue);">1. Personal Information</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="pi_name" class="form-control" value="{{ parsed_data.personal_info.full_name or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="pi_email" class="form-control" value="{{ parsed_data.personal_info.email or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" id="pi_phone" class="form-control" value="{{ parsed_data.personal_info.phone or '' }}">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input type="text" id="pi_location" class="form-control" value="{{ parsed_data.personal_info.location or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">LinkedIn URL</label>
+          <input type="url" id="pi_linkedin" class="form-control" value="{{ parsed_data.personal_info.linkedin_url or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">GitHub URL</label>
+          <input type="url" id="pi_github" class="form-control" value="{{ parsed_data.personal_info.github_url or '' }}">
+        </div>
+      </div>
+
+      <!-- 2. Summary Section -->
+      <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 12px 0; color: var(--ios-blue);">2. Professional Summary</h3>
+      <div class="form-group">
+        <textarea id="pi_summary" class="form-control" rows="3">{{ parsed_data.summary.professional_summary or '' }}</textarea>
+      </div>
+
+      <!-- 3. Technical Skills Section -->
+      <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 12px 0; color: var(--ios-blue);">
+        3. Extracted Technical Skills ({{ parsed_data.technical_skills|length }})
+      </h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;" id="skillsList">
+        {% for s in parsed_data.technical_skills %}
+          <div style="background:#FFFFFF; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--ios-border); display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" checked class="skill-check" data-name="{{ s.skill_name }}" data-category="{{ s.category or 'General' }}" data-level="{{ s.proficiency_level or 'Intermediate' }}" data-years="{{ s.years_of_experience or 1.0 }}">
+            <span style="font-size: 13px; font-weight: 500;">{{ s.skill_name }}</span>
+            <span class="badge badge-gray" style="font-size: 11px;">{{ s.category }}</span>
+          </div>
+        {% else %}
+          <div style="font-size: 13px; color: var(--text-tertiary);">No technical skills explicitly identified.</div>
+        {% endfor %}
+      </div>
+
+      <!-- 4. Extracted Projects Section -->
+      <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 12px 0; color: var(--ios-blue);">
+        4. Extracted Projects ({{ parsed_data.projects|length }})
+      </h3>
+      <div id="projectsList">
+        {% for proj in parsed_data.projects %}
+          <div class="card" style="margin-bottom: 10px; border-left: 3px solid var(--ios-blue);">
+            <div class="card-body" style="padding: 14px 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                  <input type="checkbox" checked class="proj-check" data-index="{{ loop.index0 }}">
+                  <strong style="margin-left: 6px; font-size: 13.5px;">{{ proj.title }}</strong>
+                  <span style="font-size: 12px; color: var(--ios-blue); margin-left: 8px;">{{ proj.technologies }}</span>
+                </div>
+                <span style="font-size: 12px; color: var(--text-secondary);">{{ proj.start_date }} – {{ proj.end_date }}</span>
+              </div>
+              <div style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;">{{ proj.description }}</div>
+            </div>
+          </div>
+        {% else %}
+          <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 18px;">No projects identified in resume text.</div>
+        {% endfor %}
+      </div>
+
+      <!-- 5. Extracted Experience Section -->
+      <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 12px 0; color: var(--ios-blue);">
+        5. Extracted Experience ({{ parsed_data.experience|length }})
+      </h3>
+      <div id="expList">
+        {% for exp in parsed_data.experience %}
+          <div class="card" style="margin-bottom: 10px; border-left: 3px solid var(--ios-orange);">
+            <div class="card-body" style="padding: 14px 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                  <input type="checkbox" checked class="exp-check" data-index="{{ loop.index0 }}">
+                  <strong style="margin-left: 6px; font-size: 13.5px;">{{ exp.job_title }}</strong> at {{ exp.company_name }}
+                </div>
+                <span style="font-size: 12px; color: var(--text-secondary);">{{ exp.start_date }} – {{ exp.end_date }}</span>
+              </div>
+              <div style="font-size: 13px; color: var(--text-secondary); margin-top: 6px; white-space: pre-line;">{{ exp.responsibilities }}</div>
+            </div>
+          </div>
+        {% else %}
+          <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 18px;">No work experience explicitly identified.</div>
+        {% endfor %}
+      </div>
+
+      <!-- 6. Extracted Education Section -->
+      <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 12px 0; color: var(--ios-blue);">
+        6. Extracted Education ({{ parsed_data.education|length }})
+      </h3>
+      <div id="eduList">
+        {% for edu in parsed_data.education %}
+          <div class="card" style="margin-bottom: 10px; border-left: 3px solid var(--ios-teal);">
+            <div class="card-body" style="padding: 14px 18px;">
+              <div>
+                <input type="checkbox" checked class="edu-check" data-index="{{ loop.index0 }}">
+                <strong style="margin-left: 6px; font-size: 13.5px;">{{ edu.institution }}</strong> — {{ edu.degree }} in {{ edu.field_of_study }}
+              </div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+                {{ edu.start_date }} – {{ edu.end_date }} &bull; GPA: {{ edu.gpa_or_grade or 'N/A' }}
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div style="font-size: 13px; color: var(--text-tertiary); margin-bottom: 18px;">No education records identified.</div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top: 28px; display: flex; justify-content: flex-end; gap: 10px;">
+        <a href="{{ url_for('import_resume') }}" class="btn btn-secondary">Discard & Start Over</a>
+        <button type="button" class="btn btn-primary" onclick="submitApprovedResume()">
+          <span>Approve & Save Verified Records</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function updateFileName(input) {
+  const display = document.getElementById('selectedFileName');
+  if (input.files && input.files[0]) {
+    display.innerText = 'Selected: ' + input.files[0].name + ' (' + (input.files[0].size / 1024).toFixed(1) + ' KB)';
+  }
+}
+
+{% if parsed_data %}
+const originalParsedData = {{ parsed_data | tojson }};
+
+function submitApprovedResume() {
+  const payload = {
+    personal_info: {
+      full_name: document.getElementById('pi_name').value,
+      email: document.getElementById('pi_email').value,
+      phone: document.getElementById('pi_phone').value,
+      location: document.getElementById('pi_location').value,
+      linkedin_url: document.getElementById('pi_linkedin').value,
+      github_url: document.getElementById('pi_github').value,
+      portfolio_url: ""
+    },
+    summary: {
+      professional_summary: document.getElementById('pi_summary').value,
+      career_objective: ""
+    },
+    technical_skills: [],
+    projects: [],
+    experience: [],
+    education: [],
+    soft_skills: originalParsedData.soft_skills || [],
+    certifications: originalParsedData.certifications || [],
+    achievements: originalParsedData.achievements || [],
+    publications_activities: originalParsedData.publications_activities || [],
+    languages: originalParsedData.languages || []
+  };
+
+  document.querySelectorAll('.skill-check:checked').forEach(el => {
+    payload.technical_skills.push({
+      skill_name: el.dataset.name,
+      category: el.dataset.category,
+      proficiency_level: el.dataset.level,
+      years_of_experience: parseFloat(el.dataset.years) || 1.0
+    });
+  });
+
+  document.querySelectorAll('.proj-check:checked').forEach(el => {
+    const idx = parseInt(el.dataset.index);
+    if (originalParsedData.projects && originalParsedData.projects[idx]) {
+      payload.projects.push(originalParsedData.projects[idx]);
+    }
+  });
+
+  document.querySelectorAll('.exp-check:checked').forEach(el => {
+    const idx = parseInt(el.dataset.index);
+    if (originalParsedData.experience && originalParsedData.experience[idx]) {
+      payload.experience.push(originalParsedData.experience[idx]);
+    }
+  });
+
+  document.querySelectorAll('.edu-check:checked').forEach(el => {
+    const idx = parseInt(el.dataset.index);
+    if (originalParsedData.education && originalParsedData.education[idx]) {
+      payload.education.push(originalParsedData.education[idx]);
+    }
+  });
+
+  fetch("{{ url_for('approve_imported_resume') }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      window.location.href = data.redirect;
+    } else {
+      alert("Error saving approved records: " + (data.error || "Unknown error"));
+    }
+  })
+  .catch(err => {
+    alert("Request error: " + err);
+  });
+}
+{% endif %}
+</script>
+{% endblock %}
